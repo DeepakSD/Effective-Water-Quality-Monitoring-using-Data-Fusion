@@ -1,0 +1,180 @@
+library(caret)
+library(e1071)
+library(FSelector)
+library(mlbench)
+library(plyr)
+library(randomForest)
+library(reshape2)
+library(rpart)
+soildata <- read.csv("~/Desktop/Final Yr Project/Automation/Soil/soildata.csv")
+View(soildata)
+soildata <- na.omit(soildata)
+workdata<-soildata
+
+i<-0
+for(i in 1:332){
+if((soildata$pH[i]>=5.5) && (soildata$pH[i]<=8.0)){
+workdata$pH[i]=1
+}
+else{
+workdata$pH[i]=0
+}
+
+
+if(soildata$ESP[i]<=10){
+workdata$ESP[i]=1
+}
+else{
+workdata$ESP[i]=0
+}
+
+if(soildata$Conductivity[i]<=2){
+workdata$Conductivity[i]=1
+}
+else{
+workdata$Conductivity[i]=0
+}
+
+if(soildata$CEC[i]>=40){
+workdata$CEC[i]=1
+}
+else{
+workdata$CEC[i]=0
+}
+
+if(soildata$NITROGEN[i]<=0.25){
+workdata$NITROGEN[i]=1
+}
+else{
+workdata$NITROGEN[i]=0
+}
+}
+
+if(workdata$NITROGEN[i]<=0.25){
+workdata1$NITROGEN[i]=1
+}
+else{
+workdata1$NITROGEN[i]=0
+}
+
+}
+
+
+for(i in 1:332){
+workdata$c1[i]=workdata$pH[i]+workdata$ESP[i]+workdata$Conductivity[i]+workdata$CEC[i]+workdata$NITROGEN[i]
+}
+
+for(i in 1:332){
+if(workdata$c1[i]>=3){
+workdata$c1[i]<-"class1"
+}
+else{
+workdata$c1[i]<-"class2"
+}
+}
+
+soildata<-data.frame(soildata,workdata$c1)
+colnames(soildata)[11]<-"c1"
+
+weights <- chi.squared(c1~., soildata)
+print(weights)
+subset <- cutoff.k(weights, 4)
+weights1 <- random.forest.importance(c1~.,soildata, importance.type = 1)
+print(weights1)
+subset1 <- cutoff.k(weights1,6)
+traindata <- soildata[,1:10]
+trainclasses <- soildata[,11]
+control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
+results <- rfe(traindata, trainclasses, sizes = c(1:10), rfeControl = control)
+print(results)
+predictors(results)
+plot(results, type = c("g","o"))
+
+subset<-data.frame(subset)
+subset1<-data.frame(subset1)
+un<-union(subset$subset,subset1$subset1)
+inter<-intersect(subset$subset,subset1$subset1)
+sd<-soildata[,un]
+sd1<-soildata[,inter]
+sd2<-soildata[,subset$subset]
+sd3<-soildata[,subset1$subset1]
+sd4<-soildata[,results$optVariables]
+View(sd)
+View(sd1)
+View(sd2)
+View(sd3)
+View(sd4)
+sd <- data.frame(sd,soildata$c1)
+sd1 <- data.frame(sd1,soildata$c1)
+sd2 <- data.frame(sd2,soildata$c1)
+sd3 <- data.frame(sd3,soildata$c1)
+sd4 <- data.frame(sd4,soildata$c1)
+colnames(sd)[7]<-"unextract"
+colnames(sd1)[6]<-"interextract"
+colnames(sd2)[6]<-"chiextract"
+colnames(sd3)[7]<-"rfextract"
+colnames(sd4)[6]<-"rfeextract"
+
+model <- naiveBayes(c1 ~ ., data = soildata)
+pred <- predict(model, soildata)
+table(pred, soildata$c1)
+model <- naiveBayes(unextract ~ ., data = sd)
+pred <- predict(model, sd)
+table(pred, sd$unextract)
+model <- naiveBayes(interextract ~ ., data = sd1)
+pred <- predict(model, sd1)
+table(pred, sd1$interextract)
+model <- naiveBayes(chiextract ~ ., data = sd2)
+pred <- predict(model, sd2)
+table(pred, sd2$chiextract)
+model <- naiveBayes(rfextract ~ ., data = sd3)
+pred <- predict(model, sd3)
+table(pred, sd3$rfextract)
+model <- naiveBayes(rfeextract ~ ., data = sd4)
+pred <- predict(model, sd4)
+table(pred, sd4$rfeextract)
+
+x <- subset(soildata, select = -c1)
+y <- soildata$c1
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(sd, select = -unextract)
+y <- sd$unextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(sd1, select = -interextract)
+y <- sd1$interextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(sd2, select = -chiextract)
+y <- sd2$chiextract
+model <- svm(x, y)
+print(model)
+predf <- predict(model, x)
+table(predf, y)
+x <- subset(sd3, select = -rfextract)
+y <- sd3$rfextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(sd4, select = -rfeextract)
+y <- sd4$rfeextract
+modelf <- svm(x, y)
+print(modelf)
+predf <- predict(modelf, x)
+table(predf, y)
+
+sd4<-data.frame(sd4,predf)
+sd4$rfeextract<-NULL
+colnames(sd4)[6]<-"rfeextract"
+write.table(sd4, "~/Desktop/Final Yr Project/Automation/Soil/sd.csv", sep="\t",row.names=FALSE, quote=FALSE)
+tree3<-rpart(rfeextract~sd4$pH+sd4$CEC+sd4$ESP+sd4$Conductivity+sd4$NITROGEN,data=sd4,method="class")
+plot(tree3)
+text(tree3)

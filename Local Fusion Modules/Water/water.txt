@@ -1,0 +1,140 @@
+library(caret)
+library(e1071)
+library(FSelector)
+library(mlbench)
+library(plyr)
+library(randomForest)
+library(reshape2)
+library(rpart)
+library(cluster)
+waterdata <- read.csv("~/Desktop/Final Yr Project/Automation/Water/water-treatment.data", header=FALSE)
+View(waterdata)
+waternames <- read.csv("~/Desktop/Final Yr Project/Automation/Water/waternames.csv", sep="")
+View(waternames)
+names(waterdata)<-sapply((1:nrow(waternames)),function(i) toString(waternames[i,1]))
+idx <- waterdata == "?"
+is.na(waterdata) <- idx
+waterdata <- na.omit(waterdata)
+waterdata[1]<-NULL
+waterdata[1]<-NULL
+wss <- (nrow(waterdata)-1)*sum(apply(waterdata,2,var))
+for (i in 2:15) wss[i] <- sum(kmeans(waterdata,centers=i)$withinss)
+plot(1:15, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+fit <- kmeans(waterdata, 2)
+aggregate(waterdata,by=list(fit$cluster),FUN=mean)
+waterdata <- data.frame(waterdata,fit$cluster)
+clusplot(waterdata, fit$cluster, color=TRUE, shade=TRUE, labels=2, lines=0)
+i=1
+for (i in 1:length(waterdata$fit.cluster)){
+if (waterdata$fit.cluster[i]==1)
+waterdata$c1[i]<-"class1"
+else
+waterdata$c1[i]<-"class2"
+}
+waterdata$fit.cluster<-NULL
+workdata <- read.delim("~/Desktop/Final Yr Project/Automation/Water/workdata.csv")
+waterdata<-workdata
+weights <- chi.squared(c1~., waterdata)
+print(weights)
+subset <- cutoff.k(weights, 20)
+weights1 <- random.forest.importance(c1~.,waterdata, importance.type = 1)
+print(weights1)
+subset1 <- cutoff.k(weights1, 20)
+traindata <- waterdata[,1:37]
+trainclasses <- waterdata[,38]
+control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
+results <- rfe(traindata, trainclasses, sizes = c(1:37), rfeControl = control)
+print(results)
+predictors(results)
+plot(results, type = c("g","o"))
+subset<-data.frame(subset)
+subset1<-data.frame(subset1)
+un<-union(subset$subset,subset1$subset1)
+inter<-intersect(subset$subset,subset1$subset1)
+wd<-waterdata[,un]
+wd1<-waterdata[,inter]
+wd2<-waterdata[,subset$subset]
+wd3<-waterdata[,subset1$subset1]
+wd4<-waterdata[,results$optVariables]
+View(wd)
+View(wd1)
+View(wd2)
+View(wd3)
+View(wd4)
+wd <- data.frame(wd,waterdata$c1)
+wd1 <- data.frame(wd1,waterdata$c1)
+wd2 <- data.frame(wd2,waterdata$c1)
+wd3 <- data.frame(wd3,waterdata$c1)
+wd4 <- data.frame(wd4,waterdata$c1)
+colnames(wd)[25]<-"unextract"
+colnames(wd1)[17]<-"interextract"
+colnames(wd2)[21]<-"chiextract"
+colnames(wd3)[21]<-"rfextract"
+colnames(wd4)[17]<-"rfeextract"
+
+model <- naiveBayes(c1 ~ ., data = waterdata)
+pred <- predict(model, waterdata)
+table(pred, waterdata$c1)
+model <- naiveBayes(unextract ~ ., data = wd)
+pred <- predict(model, wd)
+table(pred, wd$unextract)
+model <- naiveBayes(interextract ~ ., data = wd1)
+pred <- predict(model, wd1)
+table(pred, wd1$interextract)
+model <- naiveBayes(chiextract ~ ., data = wd2)
+pred <- predict(model, wd2)
+table(pred, wd2$chiextract)
+model <- naiveBayes(rfextract ~ ., data = wd3)
+pred <- predict(model, wd3)
+table(pred, wd3$rfextract)
+model <- naiveBayes(rfeextract ~ ., data = wd4)
+pred <- predict(model, wd4)
+table(pred, wd4$rfeextract)
+
+x <- subset(waterdata, select = -c1)
+y <- waterdata$c1
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(wd, select = -unextract)
+y <- wd$unextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(wd1, select = -interextract)
+y <- wd1$interextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(wd2, select = -chiextract)
+y <- wd2$chiextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(wd3, select = -rfextract)
+y <- wd3$rfextract
+modelf <- svm(x, y)
+print(modelf)
+predf <- predict(modelf, x)
+table(predf, y)
+x <- subset(wd4, select = -rfeextract)
+y <- wd4$rfeextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+
+wd3<-data.frame(wd3,predf)
+wd3$rfextract<-NULL
+colnames(wd3)[21]<-"rfextract"
+write.table(wd3, "~/Desktop/Final Yr Project/Automation/Water/wd.csv", sep="\t",row.names=FALSE, quote=FALSE)
+
+rfsvm4 <- read.delim("~/Desktop/Final Yr Project/Automation/Water/rfsvm4.csv")
+tree1<-rpart(rfclassifier~rfsvm4$PH.D+rfsvm4$DBO.P+rfsvm4$DBO.D+rfsvm4$PH.P+rfsvm4$PH.E+rfsvm4$SSV.E+rfsvm4$DBO.E+rfsvm4$DQO.D+rfsvm4$SSV.P+rfsvm4$RD.SS.G+rfsvm4$DQO.E+rfsvm4$SS.P+rfsvm4$RD.DQO.G+rfsvm4$COND.P+rfsvm4$SS.D+rfsvm4$DBO.S+rfsvm4$SED.P+rfsvm4$COND.E+rfsvm4$RD.DBO.G+rfsvm4$RD.SS.P,data=rfsvm4,method="class")
+plot(tree1)
+text(tree1)
+

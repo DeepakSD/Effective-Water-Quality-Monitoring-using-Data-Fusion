@@ -1,0 +1,171 @@
+library(caret)
+library(e1071)
+library(FSelector)
+library(mlbench)
+library(plyr)
+library(randomForest)
+library(reshape2)
+library(rpart)
+airdata <- read.csv("~/Desktop/Final Yr Project/Automation/Air/airdata.csv")
+View(airdata)
+airdata$S.No<-NULL
+workdata<-airdata
+
+i<-0
+for(i in 1:278){
+if(airdata$PM10[i]<=20 ){
+workdata$PM10[i]=1
+}
+else{
+workdata$PM10[i]=0
+}
+if(airdata$PM2.5[i]<=10){
+workdata$PM2.5[i]=1
+}
+else{
+workdata$PM2.5[i]=0
+}
+if(airdata$O3[i]<=100){
+workdata$O3[i]=1
+}
+else{
+workdata$O3[i]=0
+}
+if(airdata$SO2[i]<=20){
+workdata$SO2[i]=1
+}
+else{
+workdata$SO2[i]=0
+}
+if(airdata$BA_P[i]<=0.12){
+workdata$BA_P[i]=1
+}
+else{
+workdata$BA_P[i]=0
+}
+if(airdata$NO2[i]<=40){
+workdata$NO2[i]=1
+}
+else{
+workdata$NO2[i]=0
+}
+}
+
+for(i in 1:278){
+workdata$c1[i]=workdata$PM2.5[i]+workdata$PM10[i]+workdata$O3[i]+workdata$SO2[i]+workdata$NO2[i]+workdata$BA_P[i]
+}
+
+for(i in 1:278){
+if(workdata$c1[i]>=3){
+workdata$c1[i]<-"class1"
+}
+else{
+workdata$c1[i]<-"class2"
+}
+}
+
+airdata<-data.frame(airdata,workdata$c1)
+colnames(airdata)[7]<-"c1"
+
+weights <- chi.squared(c1~., airdata)
+print(weights)
+subset <- cutoff.k(weights, 5)
+weights1 <- random.forest.importance(c1~.,airdata, importance.type = 1)
+print(weights1)
+subset1 <- cutoff.k(weights1,6)
+traindata <- airdata[,1:6]
+trainclasses <- airdata[,7]
+control <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
+results <- rfe(traindata, trainclasses, sizes = c(1:6), rfeControl = control)
+print(results)
+predictors(results)
+plot(results, type = c("g","o"))
+
+subset<-data.frame(subset)
+subset1<-data.frame(subset1)
+un<-union(subset$subset,subset1$subset1)
+inter<-intersect(subset$subset,subset1$subset1)
+ad<-airdata[,un]
+ad1<-airdata[,inter]
+ad2<-airdata[,subset$subset]
+ad3<-airdata[,subset1$subset1]
+ad4<-airdata[,results$optVariables]
+View(ad)
+View(ad1)
+View(ad2)
+View(ad3)
+View(ad4)
+ad <- data.frame(ad,airdata$c1)
+ad1 <- data.frame(ad1,airdata$c1)
+ad2 <- data.frame(ad2,airdata$c1)
+ad3 <- data.frame(ad3,airdata$c1)
+ad4 <- data.frame(ad4,airdata$c1)
+colnames(ad)[7]<-"unextract"
+colnames(ad1)[6]<-"interextract"
+colnames(ad2)[6]<-"chiextract"
+colnames(ad3)[7]<-"rfextract"
+colnames(ad4)[6]<-"rfeextract"
+
+model <- naiveBayes(c1 ~ ., data = airdata)
+pred <- predict(model, airdata)
+table(pred, airdata$c1)
+model <- naiveBayes(unextract ~ ., data = ad)
+pred <- predict(model, ad)
+table(pred, ad$unextract)
+model <- naiveBayes(interextract ~ ., data = ad1)
+pred <- predict(model, ad1)
+table(pred, ad1$interextract)
+model <- naiveBayes(chiextract ~ ., data = ad2)
+pred <- predict(model, ad2)
+table(pred, ad2$chiextract)
+model <- naiveBayes(rfextract ~ ., data = ad3)
+pred <- predict(model, ad3)
+table(pred, ad3$rfextract)
+model <- naiveBayes(rfeextract ~ ., data = ad4)
+pred <- predict(model, ad4)
+table(pred, ad4$rfeextract)
+
+x <- subset(airdata, select = -c1)
+y <- airdata$c1
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(ad, select = -unextract)
+y <- ad$unextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(ad1, select = -interextract)
+y <- ad1$interextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(ad2, select = -chiextract)
+y <- ad2$chiextract
+modelf <- svm(x, y)
+print(modelf)
+predf <- predict(modelf, x)
+table(predf, y)
+x <- subset(ad3, select = -rfextract)
+y <- ad3$rfextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+x <- subset(ad4, select = -rfeextract)
+y <- ad4$rfeextract
+model <- svm(x, y)
+print(model)
+pred <- predict(model, x)
+table(pred, y)
+
+ad2<-data.frame(ad2,predf)
+ad2$chiextract<-NULL
+colnames(ad2)[6]<-"chiextract"
+write.table(ad2, "~/Desktop/Final Yr Project/Automation/Air/ad.csv", sep="\t",row.names=FALSE, quote=FALSE)
+tree2<-rpart(chiextract~ad2$O3+ad2$PM10+ad2$NO2+ad2$BA_P+ad2$PM2.5,data=ad2,method="class")
+plot(tree2)
+text(tree2)
