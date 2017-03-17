@@ -1,0 +1,56 @@
+rfsvm4 <- read.delim("~/Desktop/Final Yr Project/Automation/rfsvm4.csv")
+View(rfsvm4)
+chinb2 <- read.delim("~/Desktop/Final Yr Project/Automation/chinb2.csv")
+View(chinb2)
+rfetem1 <- read.delim("~/Desktop/Final Yr Project/Automation/rfetem1.csv")
+View(rfetem1)
+
+finaldata<-rfsvm4[1:278,1:20]
+finaldata<-data.frame(finaldata,chinb2[1:5])
+finaldata<-data.frame(finaldata,rfetem1[1:278,1:9])
+finaldata<-data.frame(finaldata,rfsvm4$rfclassifier[1:278])
+finaldata<-data.frame(finaldata,chinb2$airclass)
+finaldata<-data.frame(finaldata,rfetem1$rfclassifier[1:278])
+colnames(finaldata)[35]<-"waterclass"
+colnames(finaldata)[36]<-"airclass"
+colnames(finaldata)[37]<-"soilclass"
+
+revalue(finaldata$waterclass, c("class1" = "good")) -> finaldata$waterclass
+revalue(finaldata$waterclass, c("class2" = "bad")) -> finaldata$waterclass
+revalue(finaldata$airclass, c("class2" = "bad")) -> finaldata$airclass
+revalue(finaldata$airclass, c("class1" = "good")) -> finaldata$airclass
+revalue(finaldata$soilclass, c("class1" = "good")) -> finaldata$soilclass
+revalue(finaldata$soilclass, c("class2" = "bad")) -> finaldata$soilclass
+
+i <- 0
+for(i in 1:278){
+if(identical(as.character(finaldata$waterclass[i]),as.character("bad"))){
+finaldata$decision[i]=as.character("bad")
+}
+else{
+
+if((identical(as.character(finaldata$airclass[i]),as.character("good"))) && (identical(as.character(finaldata$soilclass[i]),as.character("good")))){
+finaldata$decision[i]=as.character("good")
+}
+
+if((identical(as.character(finaldata$airclass[i]),as.character("bad"))) && (identical(as.character(finaldata$soilclass[i]),as.character("bad"))))
+{
+finaldata$decision[i]=as.character("slightly bad")
+}
+
+if((identical(as.character(finaldata$airclass[i]),as.character("good"))) && (identical(as.character(finaldata$soilclass[i]),as.character("bad"))))
+{
+finaldata$decision[i]=as.character("slightly good")
+}
+
+if((identical(as.character(finaldata$airclass[i]),as.character("bad"))) && (identical(as.character(finaldata$soilclass[i]),as.character("good"))))
+{
+finaldata$decision[i]=as.character("slightly good")
+}
+
+}
+}
+
+tree4<-rpart(decision~finaldata$PH.D+finaldata$DBO.P+finaldata$DBO.D+finaldata$PH.P+finaldata$PH.E+finaldata$SSV.E+finaldata$DBO.E+finaldata$DQO.D+finaldata$SSV.P+finaldata$RD.SS.G+finaldata$DQO.E+finaldata$SS.P+finaldata$RD.DQO.G+finaldata$COND.P+finaldata$SS.D+finaldata$DBO.S+finaldata$SED.P+finaldata$COND.E+finaldata$RD.DBO.G+finaldata$RD.SS.P+finaldata$O3+finaldata$BA_P+finaldata$PM2.5+finaldata$SO2+finaldata$NO2+finaldata$ESP+finaldata$CEC+finaldata$WATER.CAPACITY+finaldata$BULK.DENSITY+finaldata$CARBON+finaldata$SATURATION+finaldata$Conductivity+finaldata$NITROGEN+finaldata$pH,data=finaldata,method="class")
+plot(tree4)
+text(tree4)
