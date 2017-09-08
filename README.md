@@ -6,7 +6,7 @@ Authors: Deepak Shanmugam, Aishwarya Eswaran, Arun Shunmugam
 
 Real-time measurements of the various contributing factors such as water, soil and ambient air are continually monitored. Such continuous monitoring will result in voluminous and complex data which is difficult to process using traditional data processing applications. Rapid study and analysis of this data needs to be performed to make faster and more intelligent decisions. Hence there arises a need to integrate this heterogeneous data and deal with it as and when it flows in using Data Fusion.
 
-In our project, we have developed a Water Quality Monitoring System using features of water, air and soil. The relevant features that influence the water quality are derived using appropriate Feature Extraction methods. Consequently, the individual decision making process is executed by classification using Support Vector Machine. An ensemble learning is applied to determine the water quality. The accuracy of the overall system developed is 95.25%.
+In our project, we have developed a Water Quality Monitoring System using features of water, air and soil. The relevant features that influence the water quality are derived using appropriate Feature Extraction methods. Consequently, the individual decision making process is executed by classification using Support Vector Machine. An ensemble learning is applied to determine the water quality. The accuracy of the overall system developed is 91.30%.
 
 
 Technology Used: R
